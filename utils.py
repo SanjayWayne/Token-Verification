@@ -1,13 +1,13 @@
-import pytz, random, string  
-from datetime import date 
-from info import API, URL
+import pytz, random, string
+from datetime import date, datetime, timedelta
+from config import TOKEN_API, TOKEN_URL, TOKEN_VERIFICATION_DURATION_SECONDS
 from shortzy import Shortzy
 
 TOKENS = {}
 VERIFIED = {}
 
 async def get_verify_shorted_link(link):
-    shortzy = Shortzy(api_key=API, base_site=URL)
+    shortzy = Shortzy(api_key=TOKEN_API, base_site=TOKEN_URL)
     link = await shortzy.convert(link)
     return link
 
@@ -36,18 +36,18 @@ async def verify_user(bot, userid, token):
     user = await bot.get_users(userid)
     TOKENS[user.id] = {token: True}
     tz = pytz.timezone('Asia/Kolkata')
-    today = date.today()
-    VERIFIED[user.id] = str(today)
+    now = datetime.now(tz)
+    expiration = now + timedelta(seconds=TOKEN_VERIFICATION_DURATION_SECONDS)
+    VERIFIED[user.id] = expiration.isoformat()
 
 async def check_verification(bot, userid):
     user = await bot.get_users(userid)
-    tz = pytz.timezone('Asia/Kolkata')
-    today = date.today()
     if user.id in VERIFIED.keys():
-        EXP = VERIFIED[user.id]
-        years, month, day = EXP.split('-')
-        comp = date(int(years), int(month), int(day))
-        if comp<today:
+        expiration_iso = VERIFIED[user.id]
+        expiration = datetime.fromisoformat(expiration_iso)
+        tz = pytz.timezone('Asia/Kolkata')
+        now = datetime.now(tz)
+        if now > expiration:
             return False
         else:
             return True
